@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kvas - Doctor Assistant Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+:root { --bg: #f8fafc; --sidebar: #1e293b; --sidebar-collapsed: #0f172a; --card: #ffffff; --primary: #3b82f6; --primary-hover: #2563eb; --secondary: #10b981; --danger: #ef4444; --muted: #64748b; --text: #0f172a; --text-light: #64748b; --border: #e2e8f0; --warning: #f59e0b; --shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+@keyframes slideInLeft { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes slideInUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.5 } }
+@keyframes spin { to{ transform: rotate(360deg); } }
+.loading { display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.3);border-radius:50%;border-top-color:#fff;animation: spin 1s linear infinite; }
+.sidebar { position: fixed; left: 0; top: 0; width: 280px; height: 100vh; background: linear-gradient(135deg, var(--sidebar) 0%, var(--sidebar-collapsed) 100%); color: white; display: flex; flex-direction: column; transition: var(--transition); z-index: 1000; box-shadow: var(--shadow-lg); animation: slideInLeft .6s ease-out; }
+.sidebar.collapsed { width: 80px; }
+.sidebar-header { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:space-between; }
+.sidebar-header .logo { display:flex; align-items:center; gap:12px; }
+.sidebar-header .logo i { font-size:24px; color:var(--primary); }
+.sidebar-header h2 { margin:0; font-size:20px; font-weight:600; transition:var(--transition); }
+.sidebar.collapsed .sidebar-header h2 { opacity:0; width:0; }
+.toggle-btn { background:none; border:none; color:white; font-size:18px; cursor:pointer; padding:8px; border-radius:6px; transition:var(--transition); }
+.toggle-btn:hover { background: rgba(255,255,255,0.1); }
+.sidebar-nav { flex:1; padding:20px 0; }
+.menu-item { display:flex; align-items:center; padding:14px 20px; margin:4px 16px; border-radius:10px; cursor:pointer; transition:var(--transition); }
+.menu-item:hover { background: rgba(255,255,255,0.06); transform: translateX(4px); }
+.menu-item.active { background: var(--primary); box-shadow: 0 4px 12px rgba(59,130,246,0.25); }
+.menu-item i { font-size:18px; width:24px; margin-right:16px; transition:var(--transition); }
+.menu-item span, .sidebar.collapsed .logout-btn span, .sidebar.collapsed .user-info { transition:var(--transition); }
+.sidebar.collapsed .menu-item span, .sidebar.collapsed .user-info { opacity:0; width:0; display:none; }
+.sidebar.collapsed .menu-item { justify-content:center; margin:4px 8px; }
+.sidebar.collapsed .menu-item i { margin-right:0; }
+.sidebar-footer { padding:20px; border-top:1px solid rgba(255,255,255,0.1); }
+.user-profile { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.user-avatar { width:40px;height:40px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:16px; }
+.user-info h4 { margin:0; font-size:14px; }
+.user-info p { margin:4px 0 0; font-size:12px; color:rgba(255,255,255,0.7); }
+.logout-btn { width:100%; padding:12px; background: rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-weight:500; }
+.logout-btn:hover { background:var(--danger); color:white; }
+.sidebar.collapsed .logout-btn { padding:12px 8px; }
+.main { margin-left:280px; padding:24px; transition:var(--transition); min-height:100vh; }
+.main.expanded { margin-left:80px; }
+.top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding:20px 24px; background:var(--card); border-radius:16px; box-shadow:var(--shadow); animation: slideInUp .5s ease-out; }
+.page-title { margin:0; font-size:24px; font-weight:700; }
+.top-actions { display:flex; gap:12px; align-items:center; }
+.notification-btn { position:relative; background:none; border:none; padding:12px; border-radius:50%; cursor:pointer; transition:var(--transition); color:var(--muted); }
+.notification-btn:hover { background:var(--bg); color:var(--primary); }
+.notification-badge { position:absolute; top:8px; right:8px; width:8px; height:8px; background:var(--danger); border-radius:50%; animation:pulse 2s infinite; display:none; }
+.card { background:var(--card); padding:24px; border-radius:16px; box-shadow:var(--shadow); margin-bottom:24px; animation:slideInUp .6s ease-out; }
+.card:hover { box-shadow:var(--shadow-lg); transform: translateY(-2px); }
+.card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+.card-title { margin:0; font-size:18px; font-weight:600; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px; margin-bottom:24px; }
+.stat { background:var(--card); padding:24px; border-radius:16px; box-shadow:var(--shadow); text-align:center; position:relative; overflow:hidden; animation:slideInUp .7s ease-out; }
+.stat:hover { transform: translateY(-4px); box-shadow:var(--shadow-lg); }
+.stat-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;color:white; }
+.stat-icon.patients { background:var(--primary); }
+.stat-icon.today { background:var(--secondary); }
+.stat h4 { margin:0; font-size:14px; color:var(--muted); font-weight:500; }
+.stat-value { font-size:28px; font-weight:700; margin-top:8px; display:block; }
+.form-group { margin-bottom:20px; }
+.form-label { display:block; margin-bottom:6px; font-weight:500; font-size:14px; }
+.form-input { width:100%; padding:12px 16px; border:2px solid var(--border); border-radius:10px; font-size:14px; transition:var(--transition); }
+.form-input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(59,130,246,0.08); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.btn { padding:12px 20px; border:none; border-radius:10px; cursor:pointer; font-weight:500; font-size:14px; transition:var(--transition); display:inline-flex; align-items:center; gap:8px; text-decoration:none; }
+.btn-primary { background:var(--primary); color:white; }
+.btn-primary:hover { background:var(--primary-hover); transform: translateY(-1px); }
+.btn-danger { background:var(--danger); color:white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-warning { background:var(--warning); color:white; }
+.btn-warning:hover { background: #d97706; }
+.btn-sm { padding:8px 12px; font-size:12px; }
+.table-container { overflow-x:auto; margin-top:16px; }
+.table { width:100%; border-collapse:collapse; }
+.table th, .table td { padding:12px 10px; text-align:left; border-bottom:1px solid var(--border); }
+.table th { background:var(--bg); font-weight:600; font-size:14px; }
+.table td { color:var(--text-light); font-size:14px; }
+.table tbody tr:hover { background:var(--bg); }
+.lcd-preview { padding:16px; background:#0c1220; color:#00ff88; border-radius:12px; font-family:'Courier New',monospace; font-size:16px; min-height:60px; margin-top:16px; }
+.qr-display { text-align:center; margin-top:20px; }
+.qr-display img { max-width:300px; border-radius:12px; box-shadow:var(--shadow); background:white; padding:20px; }
+.qr-actions { display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+@media (max-width:768px) { .sidebar { transform: translateX(-100%); } .sidebar.mobile-open { transform: translateX(0); } .main, .main.expanded { margin-left:0; } .mobile-toggle { display:block; } .form-row { grid-template-columns: 1fr; } }
+.alert { padding:16px; border-radius:12px; display:flex; align-items:center; gap:12px; font-weight:500; animation:slideInUp .4s ease-out; position: fixed; top: 20px; right: 20px; z-index: 2000; background: var(--card); box-shadow: var(--shadow-lg); }
+.alert-success { border-left: 4px solid var(--secondary); color: var(--text); }
+.alert-warning { border-left: 4px solid var(--warning); color: var(--text); }
+.alert-danger { border-left: 4px solid var(--danger); color: var(--text); }
+.mobile-toggle { display:none; position:fixed; top:20px; left:20px; z-index:1001; background:var(--primary); color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; }
+.section { animation:fadeIn .5s ease-out; }
+.section.hidden { display:none; }
+.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:1500; backdrop-filter: blur(4px); }
+.modal { background:var(--card); padding:32px; border-radius:16px; box-shadow:var(--shadow-lg); max-width:700px; width:90%; animation: slideInUp 0.3s ease-out; }
+.modal .close { position:absolute; top:16px; right:20px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted); }
+.modal-title { margin:0 0 24px; font-size:24px; font-weight:700; display:flex; align-items:center; gap:12px; }
+.add-patient-btn { background:var(--primary); color:white; padding:10px 16px; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+.add-patient-btn:hover { background:var(--primary-hover); transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.reset-btn { background:var(--warning); color:white; padding:10px 16px; border:none; border-radius:10px; cursor:pointer; font-weight:600; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+.reset-btn:hover { background: #d97706; transform:translateY(-2px); box-shadow:var(--shadow-lg); }
+.btn-secondary { background: #64748b; color:white; }
+.btn-secondary:hover { background: #475569; }
+textarea.form-input { resize: vertical; min-height: 80px; }
+/* small helpers */
+.hidden-el { display:none; }
+
+/* --- CSS FOR DARK MODE & TOGGLE --- */
+body.dark-mode {
+    --bg: #0f172a;
+    --sidebar: #1e293b;
+    --sidebar-collapsed: #0f172a;
+    --card: #1e293b;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --muted: #94a3b8;
+    --text: #e2e8f0;
+    --text-light: #94a3b8;
+    --border: #334155;
+}
+body.dark-mode .table th { background: #334155; }
+body.dark-mode .table tbody tr:hover { background: #334155; }
+body.dark-mode .form-input { background: #334155; color: var(--text); border-color: #475569; }
+body.dark-mode .form-input:focus { background: #1e293b; }
+body.dark-mode .lcd-preview { background: #000; color: #00ff88; }
+body.dark-mode .modal { background: #1e293b; }
+body.dark-mode .alert { background: var(--card); color: var(--text); }
+
+/* Toggle Switch CSS */
+.switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; }
+.slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; }
+input:checked + .slider { background-color: var(--primary); }
+input:checked + .slider:before { transform: translateX(26px); }
+.slider.round { border-radius: 34px; }
+.slider.round:before { border-radius: 50%; }
+
+/* Make range slider full width */
+.form-input[type="range"] {
+    width: 100%;
+    padding: 0;
+}
+/* --- END OF NEW CSS --- */
+  </style>
+</head>
+<body>
+
+<button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header"><div class="logo"><i class="fas fa-stethoscope"></i><h2>Kvas Portal</h2></div><button class="toggle-btn" id="toggleBtn"><i class="fas fa-chevron-left"></i></button></div>
+  <nav class="sidebar-nav">
+    <div class="menu-item active" data-section="dashboard"><i class="fas fa-chart-pie"></i><span>Dashboard</span></div>
+    <div class="menu-item" data-section="patients"><i class="fas fa-user-md"></i><span>Patient Records</span></div>
+    <div class="menu-item" data-section="history"><i class="fas fa-history"></i><span>Medical History</span></div>
+    <div class="menu-item" data-section="lcd"><i class="fas fa-desktop"></i><span>LCD Display</span></div>
+    <div class="menu-item" data-section="settings"><i class="fas fa-cog"></i><span>Settings</span></div>
+  </nav>
+  <div class="sidebar-footer"><div class="user-profile"><div class="user-avatar">T</div><div class="user-info"><h4>Dr. Tejas</h4><p>Administrator</p></div></div><button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button></div>
+</div>
+
+<div class="main" id="main">
+  <div class="top-bar">
+    <h1 class="page-title" id="pageTitle">Dashboard</h1>
+    <div class="top-actions">
+      <button class="add-patient-btn" id="addPatientBtn"><i class="fas fa-user-plus"></i>Add Patient</button>
+      <button class="reset-btn" id="resetBtn"><i class="fas fa-refresh"></i>Reset</button>
+          <button class="btn btn-danger" id="emergencyBtn" style="margin-left: 12px;"><i class="fas fa-exclamation-triangle"></i> EMERGENCY</button>
+          <button class="notification-btn" id="notifyBtn"><i class="fas fa-bell"></i><span class="notification-badge" id="notifBadge"></span></button>
+      <div class="user-avatar">T</div>
+    </div>
+  </div>
+
+  <div id="dashboard" class="section">
+    
+    <div class="stats">
+      <div class="stat"><div class="stat-icon patients"><i class="fas fa-users"></i></div><h4>Total Active Patients</h4><span class="stat-value" id="totalPatients">0</span></div>
+      <div class="stat"><div class="stat-icon today"><i class="fas fa-user-plus"></i></div><h4>Today's Patients</h4><span class="stat-value" id="todayPatients">0</span></div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-pie"></i> Patient Demographics</h3></div>
+        <div class="form-row" style="align-items: center; gap: 20px;">
+            <div style="width: 100%; max-width: 300px; margin: auto; min-width: 200px;">
+                <canvas id="genderChart"></canvas>
+            </div>
+            <div style="flex: 1; min-width: 300px;">
+                <canvas id="ageChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-chart-line"></i> Patient Trend (Last 7 Days)</h3></div>
+        <canvas id="patientTrendChart" height="100"></canvas>
+    </div>
+
+  </div>
+  <div id="patients" class="section hidden">
+    <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-list"></i> Patient Records</h3></div><div class="table-container"><table class="table"><thead><tr><th>Token</th><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Whatsapp</th><th>Address</th><th>Actions</th></tr></thead><tbody id="patientsTable"></tbody></table></div></div>
+  </div>
+  
+  <div id="history" class="section hidden">
+    <div class="card"><div class="card-header"><h3 class="card-title"><i class="fas fa-history"></i> Medical History</h3></div><div id="historyArea"><p>No history records found.</p></div></div>
+  </div>
+
+  <div id="lcd" class="section hidden">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-desktop"></i> LCD Control</h3></div>
+        
+            <div class="form-group">
+            <label class="form-label">Power Control</label>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" id="lcdOnBtn"><i class="fas fa-power-off"></i> Turn On</button>
+                <button class="btn btn-danger" id="lcdOffBtn"><i class="fas fa-ban"></i> Turn Off</button>
+            </div>
+        </div>
+            <div class="form-group"><label class="form-label">Manual Display Text</label><input type="text" class="form-input" id="manualLCD" placeholder="Enter custom text to show on LCD"></div>
+        <button class="btn btn-primary" id="sendLCD"><i class="fas fa-paper-plane"></i> Send to LCD</button>
+        
+        <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label">ESP32 Connection</label>
+            <button class="btn btn-secondary" id="connectEspBtn"><i class="fas fa-wifi"></i> Connect to ESP32</button>
+        </div>
+        <div class="form-group" style="margin-top: 1rem;"><label class="form-label">Live LCD Preview</label><div class="lcd-preview" id="lcdPreview">Waiting...</div></div>
+    </div>
+  </div>
+
+  <div id="settings" class="section hidden">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-file-excel"></i> Export Data</h3></div>
+        <p>Download your patient data in CSV format, which opens directly in Excel.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="exportPatientsBtn"><i class="fas fa-download"></i> Export Active Patients</button>
+            <button class="btn btn-secondary" id="exportHistoryBtn"><i class="fas fa-download"></i> Export Full History</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-sun"></i> LCD Brightness</h3></div>
+        <p>Adjust the LCD backlight brightness. The ESP32 must be programmed to listen for this value.</p>
+        <div class="form-group">
+            <label class="form-label" for="lcdBrightnessSlider">Brightness: <span id="brightnessValue">100</span>%</label>
+            <input type="range" class="form-input" id="lcdBrightnessSlider" min="10" max="100" value="100" step="5">
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header"><h3 class="card-title"><i class="fas fa-tools"></i> App Settings</h3></div>
+        
+        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center;">
+            <label class="form-label" style="margin-bottom: 0;">Dark Mode</label>
+            <label class="switch">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="slider round"></span>
+            </label>
+        </div>
+        
+        <div class="form-group" style="margin-top: 24px;">
+            <label class="form-label">Danger Zone</label>
+            <button class="btn btn-danger" id="clearHistoryBtn"><i class="fas fa-trash-alt"></i> Clear All Patient History</button>
+            <p style="color: var(--muted); font-size: 12px; margin-top: 8px;">This action is permanent and cannot be undone.</p>
+        </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-backdrop" id="addPatientModal">
+  <div class="modal">
+    <button class="close" id="closeAddPatient"><i class="fas fa-times"></i></button>
+    <h3 class="modal-title" id="modalTitle"><i class="fas fa-user-plus"></i> Register Patient</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-input" id="name" placeholder="Full name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Age</label>
+        <input type="number" class="form-input" id="age" min="0" placeholder="Age">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Gender</label>
+        <select class="form-input" id="gender">
+          <option>Male</option>
+          <option>Female</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Whatsapp</label>
+        <input type="tel" class="form-input" id="whatsapp" placeholder="Whatsapp Number">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Address</label>
+      <textarea class="form-input" id="address" placeholder="Complete address"></textarea>
+    </div>
+    <div style="margin-top:24px; text-align:right;">
+      <button class="btn btn-primary" id="registerBtn"><i class="fas fa-plus"></i> Register</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getDatabase, ref, set, push, onValue, remove, update, get, child } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+  // --- CHART VARIABLES ---
+  let genderChart, ageChart, patientTrendChart;
+  let currentPatientsData = [];
+  let currentHistoryData = null;
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyDt4TS5DpJQjLwRgiHSWBkbSkX5tQjskXK0",
+    authDomain: "doctor-assistant-6934b.firebaseapp.com",
+    databaseURL: "https://doctor-assistant-6934b-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "doctor-assistant-6934b",
+    storageBucket: "doctor-assistant-6934b.firebasestorage.app",
+    messagingSenderId: "82637889324",
+    appId: "1:82637889324:web:2bda4d7e17e821d68a5689"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Simple alert
+  function showAlert(message, type = 'success') {
+    const icon = type === 'success' ? 'check-circle' : (type === 'warning' ? 'exclamation-triangle' : (type === 'danger' ? 'exclamation-triangle' : 'info-circle'));
+    const el = document.createElement('div');
+    el.className = `alert alert-${type}`;
+    el.style.position = 'fixed'; el.style.right = '20px'; el.style.top = '20px'; el.style.zIndex = 9999; el.style.padding = '12px 16px'; el.style.borderRadius = '10px'; el.style.background = '#fff'; el.style.boxShadow = '0 8px 20px rgba(0,0,0,0.12)';
+    el.innerHTML = `<i class="fas fa-${icon}" style="margin-right:8px;color:#333;"></i><span>${message}</span>`;
+    document.body.appendChild(el);
+    setTimeout(()=> el.remove(), 3000);
+  }
+
+  // --- Start of Voice Assistant Code ---
+  function speakText(text) {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9; 
+      utterance.pitch = 1.1;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.warn('Speech Synthesis not supported in this browser.');
+    }
+  }
+  function notifyNewRegistration(name, token) {
+    const message = `New patient registered. Name: ${name}. Token number: ${token}.`;
+    speakText(message);
+  }
+  function notifyDisplayPatient(name, token) {
+    const message = `Displaying patient ${name}, token number ${token}.`;
+    speakText(message);
+  }
+  // --- End of Voice Assistant Code ---
+
+  // --- START EXPORT HELPER FUNCTIONS ---
+  function convertToCSV(data) {
+      if (!data || data.length === 0) {
+          return "";
+      }
+      const headers = Object.keys(data[0]);
+      const csvRows = [headers.join(',')]; // Header row
+      for (const row of data) {
+          const values = headers.map(header => {
+              let cell = row[header] === null || row[header] === undefined ? '' : row[header];
+              cell = String(cell).replace(/"/g, '""'); // Escape double quotes
+              if (String(cell).includes(',')) {
+                  cell = `"${cell}"`; // Wrap cells with commas in quotes
+              }
+              return cell;
+          });
+          csvRows.push(values.join(','));
+      }
+      return csvRows.join('\n');
+  }
+
+  function downloadCSV(csvString, filename) {
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) { // Modern browsers
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', filename);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+      } else { // Fallback
+          navigator.msSaveBlob(blob, filename);
+      }
+  }
+  /* --- END EXPORT HELPER FUNCTIONS --- */
+
+  /* --- START CHART HELPER FUNCTIONS --- */
+
+  /**
+   * Generates chart configuration for dark/light mode.
+   */
+  function getChartOptions() {
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const labelColor = isDarkMode ? '#e2e8f0' : '#0f172a';
+
+    return {
+        plugins: {
+            legend: {
+                labels: { color: labelColor, font: { family: 'Inter' } }
+            }
+        },
+        scales: {
+            y: {
+                ticks: { color: labelColor, font: { family: 'Inter' } },
+                grid: { color: gridColor },
+                beginAtZero: true
+            },
+            x: {
+                ticks: { color: labelColor, font: { family: 'Inter' } },
+                grid: { color: gridColor }
+            }
+        }
+    };
+  }
+
+
+  /**
+   * Updates the Gender Distribution doughnut chart.
+   * @param {Array<Object>} patients - The list of active patients.
+   */
+  function updateGenderChart(patients = []) {
+      if (genderChart) genderChart.destroy(); // Destroy old chart
+      
+      const counts = { Male: 0, Female: 0, Other: 0 };
+      patients.forEach(p => {
+          if (counts.hasOwnProperty(p.gender)) {
+              counts[p.gender]++;
+          } else if (p.gender) { // Catch any other values
+              counts.Other++;
+          }
+      });
+
+      genderChart = new Chart(DOM.genderChartCtx, {
+          type: 'doughnut',
+          data: {
+              labels: ['Male', 'Female', 'Other'],
+              datasets: [{
+                  label: 'Gender',
+                  data: [counts.Male, counts.Female, counts.Other],
+                  backgroundColor: ['#3b82f6', '#ec4899', '#64748b'],
+                  borderColor: document.body.classList.contains('dark-mode') ? '#1e293b' : '#ffffff',
+                  borderWidth: 4,
+              }]
+          },
+          options: {
+              responsive: true,
+              plugins: {
+                  legend: {
+                      position: 'top',
+                      labels: { color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a', font: { family: 'Inter' } }
+                  },
+                  title: {
+                      display: true,
+                      text: 'Gender Distribution',
+                      color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
+                      font: { family: 'Inter', size: 16 }
+                  }
+              }
+          }
+      });
+  }
+
+  /**
+   * Updates the Age Distribution bar chart.
+   * @param {Array<Object>} patients - The list of active patients.
+   */
+  function updateAgeChart(patients = []) {
+      if (ageChart) ageChart.destroy(); // Destroy old chart
+      
+      const buckets = { '0-18': 0, '19-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+      patients.forEach(p => {
+          const age = p.age;
+          if (age <= 18) buckets['0-18']++;
+          else if (age <= 30) buckets['19-30']++;
+          else if (age <= 45) buckets['31-45']++;
+          else if (age <= 60) buckets['46-60']++;
+          else buckets['60+']++;
+      });
+
+      ageChart = new Chart(DOM.ageChartCtx, {
+          type: 'bar',
+          data: {
+              labels: Object.keys(buckets),
+              datasets: [{
+                  label: 'Number of Patients',
+                  data: Object.values(buckets),
+                  backgroundColor: '#10b981',
+                  borderRadius: 4
+              }]
+          },
+          options: {
+              responsive: true,
+              ...getChartOptions(), // Get dynamic options
+              plugins: {
+                  legend: { display: false },
+                  title: {
+                      display: true,
+                      text: 'Age Distribution',
+                      color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
+                      font: { family: 'Inter', size: 16 }
+                  }
+              }
+          }
+      });
+  }
+
+  /**
+   * Helper to get the last N days as YYYY-MM-DD strings.
+   */
+  function getPastNDates(N = 7) {
+      const dates = [];
+      for (let i = N - 1; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          dates.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
+      }
+      return dates;
+  }
+
+  /**
+   * Updates the Patient Trend line chart.
+   * @param {Array<Object>} patients - The list of active patients.
+   * @param {Object} history - The full history object.
+   */
+  function updatePatientTrendChart(patients = [], history = {}) {
+      if (patientTrendChart) patientTrendChart.destroy(); // Destroy old chart
+      
+      const last7Days = getPastNDates(7); // ['2025-10-30', ..., '2025-11-05']
+      const trendData = {};
+      last7Days.forEach(date => trendData[date] = 0); // { '2025-10-30': 0, ... }
+
+      // 1. Count patients from history
+      if(history) {
+          Object.keys(history).forEach(dateKey => {
+              if (trendData.hasOwnProperty(dateKey)) {
+                  trendData[dateKey] = Object.keys(history[dateKey]).length;
+              }
+          });
+      }
+      
+      // 2. Count *today's* patients from the active list
+      const todayStr = last7Days[last7Days.length - 1];
+      const todayPatients = patients.filter(p => (p.createdAt || '').startsWith(todayStr));
+      trendData[todayStr] = todayPatients.length; // Override history count with live count
+
+      patientTrendChart = new Chart(DOM.patientTrendCtx, {
+          type: 'line',
+          data: {
+              labels: last7Days.map(d => d.slice(5)), // Format as 'MM-DD'
+              datasets: [{
+                  label: 'New Patients',
+                  data: Object.values(trendData),
+                  fill: true,
+                  borderColor: '#3b82f6',
+                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                  tension: 0.2
+              }]
+          },
+          options: {
+              responsive: true,
+              ...getChartOptions() // Get dynamic options
+          }
+      });
+  }
+  /* --- END CHART HELPER FUNCTIONS --- */
+
+
+  // DOM refs
+  const DOM = {
+    sidebar: document.getElementById('sidebar'), main: document.getElementById('main'), toggleBtn: document.getElementById('toggleBtn'),
+    mobileToggle: document.getElementById('mobileToggle'), menuItems: document.querySelectorAll('.menu-item'), pageTitle: document.getElementById('pageTitle'),
+    addPatientModal: document.getElementById('addPatientModal'), addPatientBtn: document.getElementById('addPatientBtn'), resetBtn: document.getElementById('resetBtn'),
+    emergencyBtn: document.getElementById('emergencyBtn'),
+    closeAddPatient: document.getElementById('closeAddPatient'), registerBtn: document.getElementById('registerBtn'),
+    nameInput: document.getElementById('name'), ageInput: document.getElementById('age'), genderInput: document.getElementById('gender'),
+    whatsappInput: document.getElementById('whatsapp'), addressInput: document.getElementById('address'),
+    patientsTable: document.getElementById('patientsTable'), totalPatients: document.getElementById('totalPatients'), todayPatients: document.getElementById('todayPatients'),
+    manualLCD: document.getElementById('manualLCD'), lcdPreview: document.getElementById('lcdPreview'), sendLCD: document.getElementById('sendLCD'),
+    notifBadge: document.getElementById('notifBadge'), modalTitle: document.getElementById('modalTitle'), connectEspBtn: document.getElementById('connectEspBtn'),
+    historyArea: document.getElementById('historyArea'),
+    lcdOnBtn: document.getElementById('lcdOnBtn'),
+    lcdOffBtn: document.getElementById('lcdOffBtn'),
+
+    // --- DOM REFS FOR SETTINGS ---
+    exportPatientsBtn: document.getElementById('exportPatientsBtn'),
+    exportHistoryBtn: document.getElementById('exportHistoryBtn'),
+    lcdBrightnessSlider: document.getElementById('lcdBrightnessSlider'),
+    brightnessValue: document.getElementById('brightnessValue'),
+    darkModeToggle: document.getElementById('darkModeToggle'),
+    clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+
+    // --- DOM REFS FOR CHARTS ---
+    genderChartCtx: document.getElementById('genderChart').getContext('2d'),
+    ageChartCtx: document.getElementById('ageChart').getContext('2d'),
+    patientTrendCtx: document.getElementById('patientTrendChart').getContext('2d')
+  };
+
+  // helpers
+  function generateUniquePatientId() { return `P${Math.floor(100000 + Math.random() * 900000)}`; }
+
+  function patientsSnapshotToArray(snapshotVal) {
+    if (!snapshotVal) return [];
+    return Object.keys(snapshotVal).map(key => { const obj = snapshotVal[key] || {}; const token = obj.token ?? key; return { key, token, ...obj }; });
+  }
+
+  function renderUIFromPatients(snapshotVal) {
+    const patients = patientsSnapshotToArray(snapshotVal);
+    patients.sort((a,b) => (Number(a.token)||0) - (Number(b.token)||0));
+    DOM.patientsTable.innerHTML = patients.length ? patients.map(p => `
+      <tr>
+        <td>${p.token || 'N/A'}</td>
+        <td>${p.key || 'N/A'}</td>
+        <td>${p.name || 'N/A'}</td>
+        <td>${p.age || 'N/A'}</td>
+        <td>${p.gender || 'N/A'}</td>
+        <td>${p.whatsapp || 'N/A'}</td>
+        <td>${p.address ? (p.address.length>30 ? p.address.substring(0,30)+'...' : p.address) : 'N/A'}</td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="editPatient('${p.token}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deletePatient('${p.token}', '${(p.name||'').replace(/'/g,"\\'")}')">Del</button>
+          <button class="btn btn-sm btn-secondary" onclick="displayPatient('${p.token}')">Display</button>
+        </td>
+      </tr>`).join('') : `<tr><td colspan="8" align="center" style="padding:20px;">No active patients</td></tr>`;
+
+    DOM.totalPatients.textContent = patients.length;
+    
+    // Updated to filter by createdAt
+    const todayStr = new Date().toISOString().split('T')[0];
+    DOM.todayPatients.textContent = patients.filter(p => (p.createdAt || '').startsWith(todayStr)).length;
+  }
+
+  function renderHistorySnapshot(snapshotVal) {
+    const container = document.getElementById('historyArea');
+    container.innerHTML = '';
+    if (!snapshotVal) { container.innerHTML = '<p>No history records found.</p>'; return; }
+    const dates = Object.keys(snapshotVal).sort().reverse();
+    dates.forEach(date => {
+      const records = snapshotVal[date] || {};
+      const rows = Object.keys(records).map(k => { const r = records[k]; return `<tr>
+          <td>${r.token || k}</td><td>${r.id || 'N/A'}</td><td>${r.name || 'N/A'}</td><td>${r.age || 'N/A'}</td><td>${r.gender || 'N/A'}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteHistoryRecord('${date}','${k}','${(r.name||'').replace(/'/g,"\\'")}')">Delete</button></td>
+        </tr>`; }).join('');
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `<h4 class="card-title">Date: ${date}</h4>
+        <div class="table-container"><table class="table"><thead><tr><th>Token</th><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      container.appendChild(card);
+    });
+  }
+
+  // Realtime refs
+  const patientsRef = ref(db, 'patients');
+  const historyRef = ref(db, 'history');
+  const currentDisplayRef = ref(db, 'currentDisplay');
+
+  // --- UPDATED FIREBASE LISTENERS ---
+  onValue(patientsRef, (snap) => { 
+    const snapshotVal = snap.exists() ? snap.val() : null;
+    currentPatientsData = patientsSnapshotToArray(snapshotVal); // Store for charts
+
+    renderUIFromPatients(snapshotVal); // Your existing function
+    
+    // Update charts with new data
+    updateGenderChart(currentPatientsData);
+    updateAgeChart(currentPatientsData);
+    updatePatientTrendChart(currentPatientsData, currentHistoryData);
+  });
+
+  onValue(historyRef, (snap) => { 
+    const snapshotVal = snap.exists() ? snap.val() : null;
+    currentHistoryData = snapshotVal; // Store for charts
+
+    renderHistorySnapshot(snapshotVal); // Your existing function
+
+    // Update trend chart in case history changes
+    updatePatientTrendChart(currentPatientsData, currentHistoryData);
+  });
+  // --- END OF UPDATED LISTENERS ---
+
+  onValue(currentDisplayRef, (snap) => { const v = snap.exists() ? snap.val() : null; DOM.lcdPreview.textContent = v?.text || 'Waiting for input...'; });
+
+  // register/edit/delete/display
+  let editingToken = null;
+
+  window.editPatient = async (token) => {
+    const snap = await get(child(ref(db), `patients/${token}`));
+    if (!snap.exists()) return showAlert('Patient not found', 'warning');
+    const data = snap.val(); editingToken = token;
+    DOM.nameInput.value = data.name || ''; DOM.ageInput.value = data.age || ''; DOM.genderInput.value = data.gender || 'Male'; DOM.whatsappInput.value = data.whatsapp || ''; DOM.addressInput.value = data.address || '';
+    DOM.modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Patient'; DOM.registerBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; DOM.addPatientModal.style.display = 'flex';
+  };
+
+  window.deletePatient = async (token, name) => { if (!confirm(`Delete patient ${name}?`)) return; try { await remove(ref(db, `patients/${token}`)); showAlert('Patient deleted'); } catch (err) { showAlert('Delete error: ' + err.message, 'warning'); } };
+
+  window.displayPatient = async (token) => {
+    const snap = await get(child(ref(db), `patients/${token}`)); if (!snap.exists()) return showAlert('Patient not found', 'warning'); const p = snap.val(); const displayText = `Token: ${p.token || token}  Name: ${p.name || 'N/A'}`;
+    try { 
+        await set(currentDisplayRef, { text: displayText, token: p.token || token, ts: Date.now() });
+        notifyDisplayPatient(p.name, p.token || token); // Voice notification
+        showAlert('Displayed on LCD'); 
+    } catch (err) { showAlert('LCD error: ' + err.message, 'warning'); }
+  };
+
+  DOM.registerBtn.onclick = async () => {
+    const name = DOM.nameInput.value.trim(); const age = DOM.ageInput.value.trim(); if (!name || !age) return showAlert('Please fill Name and Age.', 'warning');
+    DOM.registerBtn.disabled = true; DOM.registerBtn.innerHTML = '<span class="loading"></span>';
+    try {
+      if (editingToken) {
+        const updated = { name, age: Number(age), gender: DOM.genderInput.value, whatsapp: DOM.whatsappInput.value.trim(), address: DOM.addressInput.value.trim() };
+        await update(ref(db, `patients/${editingToken}`), updated);
+        showAlert('Patient updated successfully!');
+      } else {
+        const snap = await get(patientsRef); const all = snap.exists() ? snap.val() : null; let maxToken = 0; if (all) { Object.keys(all).forEach(k => { const t = Number(all[k]?.token ?? k); if (!isNaN(t) && t > maxToken) maxToken = t; }); }
+        const nextToken = maxToken + 1; const tokenKey = nextToken.toString(); const newPatient = { id: generateUniquePatientId(), token: nextToken, name, age: Number(age), gender: DOM.genderInput.value, whatsapp: DOM.whatsappInput.value.trim(), address: DOM.addressInput.value.trim(), createdAt: new Date().toISOString(), dateTime: new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }) };
+        await set(ref(db, `patients/${tokenKey}`), newPatient);
+        notifyNewRegistration(newPatient.name, newPatient.token); // Voice notification
+        const today = new Date().toISOString().split('T')[0]; localStorage.setItem('tokenData', JSON.stringify({ token: nextToken, date: today })); showAlert('Patient registered successfully!');
+      }
+      editingToken = null; DOM.addPatientModal.style.display = 'none'; DOM.registerBtn.disabled = false; DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register'; DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient'; DOM.nameInput.value=''; DOM.ageInput.value=''; DOM.genderInput.value='Male'; DOM.whatsappInput.value=''; DOM.addressInput.value='';
+    } catch (err) { showAlert('Error: ' + err.message, 'warning'); DOM.registerBtn.disabled = false; DOM.registerBtn.innerHTML = editingToken ? '<i class="fas fa-save"></i> Save Changes' : '<i class="fas fa-plus"></i> Register'; }
+  };
+
+  DOM.resetBtn.onclick = async () => {
+    const snap = await get(patientsRef); if (!snap.exists()) return showAlert('No patients to reset', 'warning'); if (!confirm('Move all current patients to history and reset token? This cannot be undone.')) return;
+    try {
+      const patientsObj = snap.val(); const today = new Date().toISOString().split('T')[0]; const updates = {};
+      Object.keys(patientsObj).forEach(tokenKey => { const record = patientsObj[tokenKey]; updates[`history/${today}/${tokenKey}`] = { ...record, movedAt: new Date().toISOString() }; }); await update(ref(db), updates); await remove(patientsRef); localStorage.setItem('tokenData', JSON.stringify({ token: 0, date: today })); showAlert('All patients moved to history and token reset.');
+    } catch (err) { showAlert('Reset error: ' + err.message, 'warning'); }
+  };
+
+  // --- LCD BUTTON LOGIC ---
+  DOM.sendLCD.onclick = async () => { 
+    const text = DOM.manualLCD.value.trim(); 
+    if (!text) return showAlert('Please enter text for the LCD', 'warning'); 
+    try { 
+        await set(currentDisplayRef, { text, ts: Date.now() }); 
+        showAlert('Sent to LCD'); 
+    } catch (err) { 
+        showAlert('LCD update error: ' + err.message, 'warning'); 
+    } 
+  };
+  DOM.lcdOnBtn.onclick = async () => {
+    const onText = "Turning On... Welcome to Kvas Hospital";
+    try {
+        await set(currentDisplayRef, { text: onText, ts: Date.now() });
+        speakText('LCD is turning on.');
+        showAlert('LCD turned on with welcome message.', 'success');
+    } catch (err) {
+        showAlert('LCD On Error: ' + err.message, 'warning');
+    }
+  };
+  DOM.lcdOffBtn.onclick = async () => {
+    const offText = "Turning Off...";
+    try {
+        await set(currentDisplayRef, { text: offText, ts: Date.now() });
+        speakText('LCD is turning off.');
+        showAlert('LCD turned off.', 'danger');
+    } catch (err) {
+        showAlert('LCD Off Error: ' + err.message, 'warning');
+    }
+  };
+  DOM.connectEspBtn.onclick = () => { showAlert('ESP32 connection simulated. Use Firebase listener on device to fetch currentDisplay.'); };
+  
+  window.deleteHistoryRecord = async (date, tokenKey, name) => { if (!confirm(`Delete ${name} from history (${date})?`)) return; try { await remove(ref(db, `history/${date}/${tokenKey}`)); showAlert('History record deleted.'); } catch (err) { showAlert('Delete error: ' + err.message, 'warning'); } };
+
+  // --- EMERGENCY BUTTON LOGIC ---
+  DOM.emergencyBtn.onclick = async () => {
+    const emergencyText = "!!! EMERGENCY !!!";
+    try { 
+      await set(currentDisplayRef, { text: emergencyText, token: 'EMERGENCY', ts: Date.now() });
+      DOM.lcdPreview.textContent = emergencyText; 
+      speakText("Emergency mode activated. Displaying emergency alert.");
+      showAlert('Emergency alert sent to LCD!', 'danger');
+    } catch (err) { 
+      showAlert('Emergency LCD error: ' + err.message, 'warning'); 
+    }
+  };
+
+  /* --- START SETTINGS EVENT LISTENERS --- */
+
+  // 1. Export Active Patients
+  DOM.exportPatientsBtn.onclick = async () => {
+      try {
+          const snap = await get(patientsRef);
+          if (!snap.exists()) return showAlert('No active patients to export', 'warning');
+          const patients = patientsSnapshotToArray(snap.val());
+          if (patients.length === 0) return showAlert('No active patients to export', 'warning');
+          const csvData = convertToCSV(patients);
+          downloadCSV(csvData, `kvas_active_patients_${new Date().toISOString().split('T')[0]}.csv`);
+      } catch (err) {
+          showAlert('Export Error: ' + err.message, 'danger');
+      }
+  };
+
+  // 2. Export Full History
+  DOM.exportHistoryBtn.onclick = async () => {
+      try {
+          const snap = await get(historyRef);
+          if (!snap.exists()) return showAlert('No history records to export', 'warning');
+          const historyData = snap.val();
+          const allRecords = [];
+          Object.keys(historyData).forEach(date => {
+              const dateRecords = historyData[date];
+              Object.keys(dateRecords).forEach(tokenKey => {
+                  allRecords.push({
+                      archived_date: date,
+                      ...dateRecords[tokenKey]
+                  });
+              });
+          });
+          if (allRecords.length === 0) return showAlert('No history records to export', 'warning');
+          const csvData = convertToCSV(allRecords);
+          downloadCSV(csvData, `kvas_full_history_${new Date().toISOString().split('T')[0]}.csv`);
+      } catch (err) {
+          showAlert('Export Error: ' + err.message, 'danger');
+      }
+  };
+
+  // 3. LCD Brightness Slider
+  DOM.lcdBrightnessSlider.oninput = (e) => {
+      DOM.brightnessValue.textContent = e.target.value; // Update the label
+  };
+  DOM.lcdBrightnessSlider.onchange = async (e) => {
+      const brightness = e.target.value;
+      try {
+          const lcdControlRef = ref(db, 'lcdControl/brightness');
+          await set(lcdControlRef, Number(brightness));
+          showAlert(`LCD Brightness command sent: ${brightness}%`);
+      } catch (err) {
+          showAlert('Brightness Error: ' + err.message, 'danger');
+      }
+  };
+
+  // 4. Dark Mode Toggle
+  DOM.darkModeToggle.onchange = () => {
+      if (DOM.darkModeToggle.checked) {
+          document.body.classList.add('dark-mode');
+          localStorage.setItem('darkMode', 'enabled');
+      } else {
+          document.body.classList.remove('dark-mode');
+          localStorage.setItem('darkMode', 'disabled');
+      }
+      
+      // --- UPDATE CHARTS FOR DARK MODE ---
+      updateGenderChart(currentPatientsData);
+      updateAgeChart(currentPatientsData);
+      updatePatientTrendChart(currentPatientsData, currentHistoryData);
+  };
+
+  // 5. Clear All History
+  DOM.clearHistoryBtn.onclick = async () => {
+      if (!confirm('!!! WARNING !!!\n\nAre you sure you want to delete ALL patient history? This action is permanent and cannot be undone.')) {
+          return;
+      }
+      if (!confirm('FINAL CONFIRMATION:\n\nThis will erase all records from the history tab. Proceed?')) {
+          return;
+      }
+      try {
+          await remove(historyRef); // Removes the entire 'history' node
+          showAlert('All patient history has been permanently deleted.', 'success');
+      } catch (err) {
+          showAlert('Delete Error: ' + err.message, 'danger');
+      }
+  };
+  /* --- END SETTINGS EVENT LISTENERS --- */
+
+  // UI interactions
+  const openModal = (modal) => modal.style.display = 'flex';
+  const closeModal = (modal) => { modal.style.display = 'none'; if (modal === DOM.addPatientModal) { DOM.nameInput.value=''; DOM.ageInput.value=''; DOM.genderInput.value='Male'; DOM.whatsappInput.value=''; DOM.addressInput.value=''; editingToken=null; DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient'; DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register'; } };
+  DOM.addPatientBtn.onclick = () => openModal(DOM.addPatientModal); DOM.closeAddPatient.onclick = () => closeModal(DOM.addPatientModal); DOM.addPatientModal.onclick = (e) => e.target === DOM.addPatientModal && closeModal(DOM.addPatientModal); document.onkeydown = (e) => e.key === 'Escape' && closeModal(DOM.addPatientModal);
+
+  DOM.toggleBtn.onclick = () => { DOM.sidebar.classList.toggle('collapsed'); DOM.main.classList.toggle('expanded'); };
+  DOM.mobileToggle.onclick = () => DOM.sidebar.classList.toggle('mobile-open');
+  DOM.menuItems.forEach(item => item.addEventListener('click', () => { DOM.menuItems.forEach(i => i.classList.remove('active')); item.classList.add('active'); DOM.pageTitle.textContent = item.querySelector('span').textContent; document.querySelectorAll('.section').forEach(s => s.classList.add('hidden')); document.getElementById(item.dataset.section)?.classList.remove('hidden'); DOM.sidebar.classList.remove('mobile-open'); }));
+
+  // initial state
+  document.addEventListener('DOMContentLoaded', () => {
+      // Check for saved dark mode preference
+      if (localStorage.getItem('darkMode') === 'enabled') {
+          document.body.classList.add('dark-mode');
+          DOM.darkModeToggle.checked = true;
+      }
+      
+      // Set active menu item based on hash or default
+      const activeSection = window.location.hash ? window.location.hash.substring(1) : 'dashboard';
+      const activeMenuItem = document.querySelector(`.menu-item[data-section="${activeSection}"]`) || document.querySelector(`.menu-item[data-section="dashboard"]`);
+      
+      activeMenuItem.click(); // Trigger click to set section
+      
+      // Original initial state logic
+      DOM.addPatientModal.style.display = 'none'; 
+      get(currentDisplayRef).then(snap => { if (snap.exists()) DOM.lcdPreview.textContent = snap.val().text || 'Waiting for input...'; }).catch(()=>{});
+
+      // Initial chart draw (will be updated by Firebase listeners)
+      updateGenderChart([]);
+      updateAgeChart([]);
+      updatePatientTrendChart([], {});
+  });
+
+</script>
+</body>
+</html>
