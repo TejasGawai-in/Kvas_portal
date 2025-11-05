@@ -6,10 +6,10 @@
   <title>Kvas - Doctor Assistant Portal</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
+/* (UNCHANGED CSS from your file) */
 :root { --bg: #f8fafc; --sidebar: #1e293b; --sidebar-collapsed: #0f172a; --card: #ffffff; --primary: #3b82f6; --primary-hover: #2563eb; --secondary: #10b981; --danger: #ef4444; --muted: #64748b; --text: #0f172a; --text-light: #64748b; --border: #e2e8f0; --warning: #f59e0b; --shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px -1px rgba(0,0,0,0.1); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
@@ -404,15 +404,10 @@ input:checked + .slider:before { transform: translateX(26px); }
   /* --- END EXPORT HELPER FUNCTIONS --- */
 
   /* --- START CHART HELPER FUNCTIONS --- */
-
-  /**
-   * Generates chart configuration for dark/light mode.
-   */
   function getChartOptions() {
     const isDarkMode = document.body.classList.contains('dark-mode');
     const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
     const labelColor = isDarkMode ? '#e2e8f0' : '#0f172a';
-
     return {
         plugins: {
             legend: {
@@ -433,489 +428,468 @@ input:checked + .slider:before { transform: translateX(26px); }
     };
   }
 
-
-  /**
-   * Updates the Gender Distribution doughnut chart.
-   * @param {Array<Object>} patients - The list of active patients.
-   */
   function updateGenderChart(patients = []) {
-      if (genderChart) genderChart.destroy(); // Destroy old chart
-      
-      const counts = { Male: 0, Female: 0, Other: 0 };
-      patients.forEach(p => {
-          if (counts.hasOwnProperty(p.gender)) {
-              counts[p.gender]++;
-          } else if (p.gender) { // Catch any other values
-              counts.Other++;
-          }
-      });
-
-      genderChart = new Chart(DOM.genderChartCtx, {
-          type: 'doughnut',
-          data: {
-              labels: ['Male', 'Female', 'Other'],
-              datasets: [{
-                  label: 'Gender',
-                  data: [counts.Male, counts.Female, counts.Other],
-                  backgroundColor: ['#3b82f6', '#ec4899', '#64748b'],
-                  borderColor: document.body.classList.contains('dark-mode') ? '#1e293b' : '#ffffff',
-                  borderWidth: 4,
-              }]
-          },
-          options: {
-              responsive: true,
-              plugins: {
-                  legend: {
-                      position: 'top',
-                      labels: { color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a', font: { family: 'Inter' } }
-                  },
-                  title: {
-                      display: true,
-                      text: 'Gender Distribution',
-                      color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
-                      font: { family: 'Inter', size: 16 }
+      try {
+          if (genderChart) genderChart.destroy();
+          const counts = { Male: 0, Female: 0, Other: 0 };
+          patients.forEach(p => {
+              const g = (p.gender || 'Other');
+              if (counts.hasOwnProperty(g)) counts[g]++; else counts.Other++;
+          });
+          const ctxEl = document.getElementById('genderChart');
+          if (!ctxEl) return;
+          const ctx = ctxEl.getContext('2d');
+          genderChart = new Chart(ctx, {
+              type: 'doughnut',
+              data: {
+                  labels: ['Male', 'Female', 'Other'],
+                  datasets: [{
+                      label: 'Gender',
+                      data: [counts.Male, counts.Female, counts.Other],
+                      backgroundColor: ['#3b82f6', '#ec4899', '#64748b'],
+                      borderColor: document.body.classList.contains('dark-mode') ? '#1e293b' : '#ffffff',
+                      borderWidth: 4,
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  plugins: {
+                      legend: {
+                          position: 'top',
+                          labels: { color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a' }
+                      },
+                      title: {
+                          display: true,
+                          text: 'Gender Distribution',
+                          color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
+                          font: { family: 'Inter', size: 16 }
+                      }
                   }
               }
-          }
-      });
+          });
+      } catch (err) { console.error('updateGenderChart error', err); }
   }
 
-  /**
-   * Updates the Age Distribution bar chart.
-   * @param {Array<Object>} patients - The list of active patients.
-   */
   function updateAgeChart(patients = []) {
-      if (ageChart) ageChart.destroy(); // Destroy old chart
-      
-      const buckets = { '0-18': 0, '19-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
-      patients.forEach(p => {
-          const age = p.age;
-          if (age <= 18) buckets['0-18']++;
-          else if (age <= 30) buckets['19-30']++;
-          else if (age <= 45) buckets['31-45']++;
-          else if (age <= 60) buckets['46-60']++;
-          else buckets['60+']++;
-      });
-
-      ageChart = new Chart(DOM.ageChartCtx, {
-          type: 'bar',
-          data: {
-              labels: Object.keys(buckets),
-              datasets: [{
-                  label: 'Number of Patients',
-                  data: Object.values(buckets),
-                  backgroundColor: '#10b981',
-                  borderRadius: 4
-              }]
-          },
-          options: {
-              responsive: true,
-              ...getChartOptions(), // Get dynamic options
-              plugins: {
-                  legend: { display: false },
-                  title: {
-                      display: true,
-                      text: 'Age Distribution',
-                      color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
-                      font: { family: 'Inter', size: 16 }
+      try {
+          if (ageChart) ageChart.destroy();
+          const buckets = { '0-18': 0, '19-30': 0, '31-45': 0, '46-60': 0, '60+': 0 };
+          patients.forEach(p => {
+              const age = Number(p.age) || 0;
+              if (age <= 18) buckets['0-18']++;
+              else if (age <= 30) buckets['19-30']++;
+              else if (age <= 45) buckets['31-45']++;
+              else if (age <= 60) buckets['46-60']++;
+              else buckets['60+']++;
+          });
+          const ctxEl = document.getElementById('ageChart');
+          if (!ctxEl) return;
+          const ctx = ctxEl.getContext('2d');
+          ageChart = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                  labels: Object.keys(buckets),
+                  datasets: [{
+                      label: 'Number of Patients',
+                      data: Object.values(buckets),
+                      backgroundColor: '#10b981',
+                      borderRadius: 4
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  ...getChartOptions(),
+                  plugins: {
+                      legend: { display: false },
+                      title: {
+                          display: true,
+                          text: 'Age Distribution',
+                          color: document.body.classList.contains('dark-mode') ? '#e2e8f0' : '#0f172a',
+                          font: { family: 'Inter', size: 16 }
+                      }
                   }
               }
-          }
-      });
+          });
+      } catch (err) { console.error('updateAgeChart error', err); }
   }
 
-  /**
-   * Helper to get the last N days as YYYY-MM-DD strings.
-   */
   function getPastNDates(N = 7) {
       const dates = [];
       for (let i = N - 1; i >= 0; i--) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          dates.push(d.toISOString().split('T')[0]); // YYYY-MM-DD
+          dates.push(d.toISOString().split('T')[0]);
       }
       return dates;
   }
 
-  /**
-   * Updates the Patient Trend line chart.
-   * @param {Array<Object>} patients - The list of active patients.
-   * @param {Object} history - The full history object.
-   */
   function updatePatientTrendChart(patients = [], history = {}) {
-      if (patientTrendChart) patientTrendChart.destroy(); // Destroy old chart
-      
-      const last7Days = getPastNDates(7); // ['2025-10-30', ..., '2025-11-05']
-      const trendData = {};
-      last7Days.forEach(date => trendData[date] = 0); // { '2025-10-30': 0, ... }
-
-      // 1. Count patients from history
-      if(history) {
-          Object.keys(history).forEach(dateKey => {
-              if (trendData.hasOwnProperty(dateKey)) {
-                  trendData[dateKey] = Object.keys(history[dateKey]).length;
+      try {
+          if (patientTrendChart) patientTrendChart.destroy();
+          const last7Days = getPastNDates(7);
+          const trendData = {};
+          last7Days.forEach(date => trendData[date] = 0);
+          if (history) {
+              Object.keys(history).forEach(dateKey => {
+                  if (trendData.hasOwnProperty(dateKey)) trendData[dateKey] = Object.keys(history[dateKey] || {}).length;
+              });
+          }
+          const todayStr = last7Days[last7Days.length - 1];
+          const todayPatients = patients.filter(p => (p.createdAt || '').startsWith(todayStr));
+          trendData[todayStr] = todayPatients.length;
+          const ctxEl = document.getElementById('patientTrendChart');
+          if (!ctxEl) return;
+          const ctx = ctxEl.getContext('2d');
+          patientTrendChart = new Chart(ctx, {
+              type: 'line',
+              data: {
+                  labels: last7Days.map(d => d.slice(5)),
+                  datasets: [{
+                      label: 'New Patients',
+                      data: Object.values(trendData),
+                      fill: true,
+                      borderColor: '#3b82f6',
+                      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                      tension: 0.2
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  ...getChartOptions()
               }
           });
-      }
-      
-      // 2. Count *today's* patients from the active list
-      const todayStr = last7Days[last7Days.length - 1];
-      const todayPatients = patients.filter(p => (p.createdAt || '').startsWith(todayStr));
-      trendData[todayStr] = todayPatients.length; // Override history count with live count
-
-      patientTrendChart = new Chart(DOM.patientTrendCtx, {
-          type: 'line',
-          data: {
-              labels: last7Days.map(d => d.slice(5)), // Format as 'MM-DD'
-              datasets: [{
-                  label: 'New Patients',
-                  data: Object.values(trendData),
-                  fill: true,
-                  borderColor: '#3b82f6',
-                  backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                  tension: 0.2
-              }]
-          },
-          options: {
-              responsive: true,
-              ...getChartOptions() // Get dynamic options
-          }
-      });
+      } catch (err) { console.error('updatePatientTrendChart error', err); }
   }
   /* --- END CHART HELPER FUNCTIONS --- */
 
-
-  // DOM refs
-  const DOM = {
-    sidebar: document.getElementById('sidebar'), main: document.getElementById('main'), toggleBtn: document.getElementById('toggleBtn'),
-    mobileToggle: document.getElementById('mobileToggle'), menuItems: document.querySelectorAll('.menu-item'), pageTitle: document.getElementById('pageTitle'),
-    addPatientModal: document.getElementById('addPatientModal'), addPatientBtn: document.getElementById('addPatientBtn'), resetBtn: document.getElementById('resetBtn'),
-    emergencyBtn: document.getElementById('emergencyBtn'),
-    closeAddPatient: document.getElementById('closeAddPatient'), registerBtn: document.getElementById('registerBtn'),
-    nameInput: document.getElementById('name'), ageInput: document.getElementById('age'), genderInput: document.getElementById('gender'),
-    whatsappInput: document.getElementById('whatsapp'), addressInput: document.getElementById('address'),
-    patientsTable: document.getElementById('patientsTable'), totalPatients: document.getElementById('totalPatients'), todayPatients: document.getElementById('todayPatients'),
-    manualLCD: document.getElementById('manualLCD'), lcdPreview: document.getElementById('lcdPreview'), sendLCD: document.getElementById('sendLCD'),
-    notifBadge: document.getElementById('notifBadge'), modalTitle: document.getElementById('modalTitle'), connectEspBtn: document.getElementById('connectEspBtn'),
-    historyArea: document.getElementById('historyArea'),
-    lcdOnBtn: document.getElementById('lcdOnBtn'),
-    lcdOffBtn: document.getElementById('lcdOffBtn'),
-
-    // --- DOM REFS FOR SETTINGS ---
-    exportPatientsBtn: document.getElementById('exportPatientsBtn'),
-    exportHistoryBtn: document.getElementById('exportHistoryBtn'),
-    lcdBrightnessSlider: document.getElementById('lcdBrightnessSlider'),
-    brightnessValue: document.getElementById('brightnessValue'),
-    darkModeToggle: document.getElementById('darkModeToggle'),
-    clearHistoryBtn: document.getElementById('clearHistoryBtn'),
-
-    // --- DOM REFS FOR CHARTS ---
-    genderChartCtx: document.getElementById('genderChart').getContext('2d'),
-    ageChartCtx: document.getElementById('ageChart').getContext('2d'),
-    patientTrendCtx: document.getElementById('patientTrendChart').getContext('2d')
-  };
-
   // helpers
   function generateUniquePatientId() { return `P${Math.floor(100000 + Math.random() * 900000)}`; }
-
   function patientsSnapshotToArray(snapshotVal) {
     if (!snapshotVal) return [];
     return Object.keys(snapshotVal).map(key => { const obj = snapshotVal[key] || {}; const token = obj.token ?? key; return { key, token, ...obj }; });
   }
 
-  function renderUIFromPatients(snapshotVal) {
-    const patients = patientsSnapshotToArray(snapshotVal);
-    patients.sort((a,b) => (Number(a.token)||0) - (Number(b.token)||0));
-    DOM.patientsTable.innerHTML = patients.length ? patients.map(p => `
-      <tr>
-        <td>${p.token || 'N/A'}</td>
-        <td>${p.key || 'N/A'}</td>
-        <td>${p.name || 'N/A'}</td>
-        <td>${p.age || 'N/A'}</td>
-        <td>${p.gender || 'N/A'}</td>
-        <td>${p.whatsapp || 'N/A'}</td>
-        <td>${p.address ? (p.address.length>30 ? p.address.substring(0,30)+'...' : p.address) : 'N/A'}</td>
-        <td>
-          <button class="btn btn-sm btn-primary" onclick="editPatient('${p.token}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deletePatient('${p.token}', '${(p.name||'').replace(/'/g,"\\'")}')">Del</button>
-          <button class="btn btn-sm btn-secondary" onclick="displayPatient('${p.token}')">Display</button>
-        </td>
-      </tr>`).join('') : `<tr><td colspan="8" align="center" style="padding:20px;">No active patients</td></tr>`;
-
-    DOM.totalPatients.textContent = patients.length;
-    
-    // Updated to filter by createdAt
-    const todayStr = new Date().toISOString().split('T')[0];
-    DOM.todayPatients.textContent = patients.filter(p => (p.createdAt || '').startsWith(todayStr)).length;
-  }
-
-  function renderHistorySnapshot(snapshotVal) {
-    const container = document.getElementById('historyArea');
-    container.innerHTML = '';
-    if (!snapshotVal) { container.innerHTML = '<p>No history records found.</p>'; return; }
-    const dates = Object.keys(snapshotVal).sort().reverse();
-    dates.forEach(date => {
-      const records = snapshotVal[date] || {};
-      const rows = Object.keys(records).map(k => { const r = records[k]; return `<tr>
-          <td>${r.token || k}</td><td>${r.id || 'N/A'}</td><td>${r.name || 'N/A'}</td><td>${r.age || 'N/A'}</td><td>${r.gender || 'N/A'}</td>
-          <td><button class="btn btn-sm btn-danger" onclick="deleteHistoryRecord('${date}','${k}','${(r.name||'').replace(/'/g,"\\'")}')">Delete</button></td>
-        </tr>`; }).join('');
-      const card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `<h4 class="card-title">Date: ${date}</h4>
-        <div class="table-container"><table class="table"><thead><tr><th>Token</th><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-      container.appendChild(card);
-    });
-  }
-
-  // Realtime refs
-  const patientsRef = ref(db, 'patients');
-  const historyRef = ref(db, 'history');
-  const currentDisplayRef = ref(db, 'currentDisplay');
-
-  // --- UPDATED FIREBASE LISTENERS ---
-  onValue(patientsRef, (snap) => { 
-    const snapshotVal = snap.exists() ? snap.val() : null;
-    currentPatientsData = patientsSnapshotToArray(snapshotVal); // Store for charts
-
-    renderUIFromPatients(snapshotVal); // Your existing function
-    
-    // Update charts with new data
-    updateGenderChart(currentPatientsData);
-    updateAgeChart(currentPatientsData);
-    updatePatientTrendChart(currentPatientsData, currentHistoryData);
-  });
-
-  onValue(historyRef, (snap) => { 
-    const snapshotVal = snap.exists() ? snap.val() : null;
-    currentHistoryData = snapshotVal; // Store for charts
-
-    renderHistorySnapshot(snapshotVal); // Your existing function
-
-    // Update trend chart in case history changes
-    updatePatientTrendChart(currentPatientsData, currentHistoryData);
-  });
-  // --- END OF UPDATED LISTENERS ---
-
-  onValue(currentDisplayRef, (snap) => { const v = snap.exists() ? snap.val() : null; DOM.lcdPreview.textContent = v?.text || 'Waiting for input...'; });
-
-  // register/edit/delete/display
-  let editingToken = null;
-
-  window.editPatient = async (token) => {
-    const snap = await get(child(ref(db), `patients/${token}`));
-    if (!snap.exists()) return showAlert('Patient not found', 'warning');
-    const data = snap.val(); editingToken = token;
-    DOM.nameInput.value = data.name || ''; DOM.ageInput.value = data.age || ''; DOM.genderInput.value = data.gender || 'Male'; DOM.whatsappInput.value = data.whatsapp || ''; DOM.addressInput.value = data.address || '';
-    DOM.modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Patient'; DOM.registerBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes'; DOM.addPatientModal.style.display = 'flex';
-  };
-
-  window.deletePatient = async (token, name) => { if (!confirm(`Delete patient ${name}?`)) return; try { await remove(ref(db, `patients/${token}`)); showAlert('Patient deleted'); } catch (err) { showAlert('Delete error: ' + err.message, 'warning'); } };
-
-  window.displayPatient = async (token) => {
-    const snap = await get(child(ref(db), `patients/${token}`)); if (!snap.exists()) return showAlert('Patient not found', 'warning'); const p = snap.val(); const displayText = `Token: ${p.token || token}  Name: ${p.name || 'N/A'}`;
-    try { 
-        await set(currentDisplayRef, { text: displayText, token: p.token || token, ts: Date.now() });
-        notifyDisplayPatient(p.name, p.token || token); // Voice notification
-        showAlert('Displayed on LCD'); 
-    } catch (err) { showAlert('LCD error: ' + err.message, 'warning'); }
-  };
-
-  DOM.registerBtn.onclick = async () => {
-    const name = DOM.nameInput.value.trim(); const age = DOM.ageInput.value.trim(); if (!name || !age) return showAlert('Please fill Name and Age.', 'warning');
-    DOM.registerBtn.disabled = true; DOM.registerBtn.innerHTML = '<span class="loading"></span>';
-    try {
-      if (editingToken) {
-        const updated = { name, age: Number(age), gender: DOM.genderInput.value, whatsapp: DOM.whatsappInput.value.trim(), address: DOM.addressInput.value.trim() };
-        await update(ref(db, `patients/${editingToken}`), updated);
-        showAlert('Patient updated successfully!');
-      } else {
-        const snap = await get(patientsRef); const all = snap.exists() ? snap.val() : null; let maxToken = 0; if (all) { Object.keys(all).forEach(k => { const t = Number(all[k]?.token ?? k); if (!isNaN(t) && t > maxToken) maxToken = t; }); }
-        const nextToken = maxToken + 1; const tokenKey = nextToken.toString(); const newPatient = { id: generateUniquePatientId(), token: nextToken, name, age: Number(age), gender: DOM.genderInput.value, whatsapp: DOM.whatsappInput.value.trim(), address: DOM.addressInput.value.trim(), createdAt: new Date().toISOString(), dateTime: new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }) };
-        await set(ref(db, `patients/${tokenKey}`), newPatient);
-        notifyNewRegistration(newPatient.name, newPatient.token); // Voice notification
-        const today = new Date().toISOString().split('T')[0]; localStorage.setItem('tokenData', JSON.stringify({ token: nextToken, date: today })); showAlert('Patient registered successfully!');
-      }
-      editingToken = null; DOM.addPatientModal.style.display = 'none'; DOM.registerBtn.disabled = false; DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register'; DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient'; DOM.nameInput.value=''; DOM.ageInput.value=''; DOM.genderInput.value='Male'; DOM.whatsappInput.value=''; DOM.addressInput.value='';
-    } catch (err) { showAlert('Error: ' + err.message, 'warning'); DOM.registerBtn.disabled = false; DOM.registerBtn.innerHTML = editingToken ? '<i class="fas fa-save"></i> Save Changes' : '<i class="fas fa-plus"></i> Register'; }
-  };
-
-  DOM.resetBtn.onclick = async () => {
-    const snap = await get(patientsRef); if (!snap.exists()) return showAlert('No patients to reset', 'warning'); if (!confirm('Move all current patients to history and reset token? This cannot be undone.')) return;
-    try {
-      const patientsObj = snap.val(); const today = new Date().toISOString().split('T')[0]; const updates = {};
-      Object.keys(patientsObj).forEach(tokenKey => { const record = patientsObj[tokenKey]; updates[`history/${today}/${tokenKey}`] = { ...record, movedAt: new Date().toISOString() }; }); await update(ref(db), updates); await remove(patientsRef); localStorage.setItem('tokenData', JSON.stringify({ token: 0, date: today })); showAlert('All patients moved to history and token reset.');
-    } catch (err) { showAlert('Reset error: ' + err.message, 'warning'); }
-  };
-
-  // --- LCD BUTTON LOGIC ---
-  DOM.sendLCD.onclick = async () => { 
-    const text = DOM.manualLCD.value.trim(); 
-    if (!text) return showAlert('Please enter text for the LCD', 'warning'); 
-    try { 
-        await set(currentDisplayRef, { text, ts: Date.now() }); 
-        showAlert('Sent to LCD'); 
-    } catch (err) { 
-        showAlert('LCD update error: ' + err.message, 'warning'); 
-    } 
-  };
-  DOM.lcdOnBtn.onclick = async () => {
-    const onText = "Turning On... Welcome to Kvas Hospital";
-    try {
-        await set(currentDisplayRef, { text: onText, ts: Date.now() });
-        speakText('LCD is turning on.');
-        showAlert('LCD turned on with welcome message.', 'success');
-    } catch (err) {
-        showAlert('LCD On Error: ' + err.message, 'warning');
-    }
-  };
-  DOM.lcdOffBtn.onclick = async () => {
-    const offText = "Turning Off...";
-    try {
-        await set(currentDisplayRef, { text: offText, ts: Date.now() });
-        speakText('LCD is turning off.');
-        showAlert('LCD turned off.', 'danger');
-    } catch (err) {
-        showAlert('LCD Off Error: ' + err.message, 'warning');
-    }
-  };
-  DOM.connectEspBtn.onclick = () => { showAlert('ESP32 connection simulated. Use Firebase listener on device to fetch currentDisplay.'); };
-  
-  window.deleteHistoryRecord = async (date, tokenKey, name) => { if (!confirm(`Delete ${name} from history (${date})?`)) return; try { await remove(ref(db, `history/${date}/${tokenKey}`)); showAlert('History record deleted.'); } catch (err) { showAlert('Delete error: ' + err.message, 'warning'); } };
-
-  // --- EMERGENCY BUTTON LOGIC ---
-  DOM.emergencyBtn.onclick = async () => {
-    const emergencyText = "!!! EMERGENCY !!!";
-    try { 
-      await set(currentDisplayRef, { text: emergencyText, token: 'EMERGENCY', ts: Date.now() });
-      DOM.lcdPreview.textContent = emergencyText; 
-      speakText("Emergency mode activated. Displaying emergency alert.");
-      showAlert('Emergency alert sent to LCD!', 'danger');
-    } catch (err) { 
-      showAlert('Emergency LCD error: ' + err.message, 'warning'); 
-    }
-  };
-
-  /* --- START SETTINGS EVENT LISTENERS --- */
-
-  // 1. Export Active Patients
-  DOM.exportPatientsBtn.onclick = async () => {
-      try {
-          const snap = await get(patientsRef);
-          if (!snap.exists()) return showAlert('No active patients to export', 'warning');
-          const patients = patientsSnapshotToArray(snap.val());
-          if (patients.length === 0) return showAlert('No active patients to export', 'warning');
-          const csvData = convertToCSV(patients);
-          downloadCSV(csvData, `kvas_active_patients_${new Date().toISOString().split('T')[0]}.csv`);
-      } catch (err) {
-          showAlert('Export Error: ' + err.message, 'danger');
-      }
-  };
-
-  // 2. Export Full History
-  DOM.exportHistoryBtn.onclick = async () => {
-      try {
-          const snap = await get(historyRef);
-          if (!snap.exists()) return showAlert('No history records to export', 'warning');
-          const historyData = snap.val();
-          const allRecords = [];
-          Object.keys(historyData).forEach(date => {
-              const dateRecords = historyData[date];
-              Object.keys(dateRecords).forEach(tokenKey => {
-                  allRecords.push({
-                      archived_date: date,
-                      ...dateRecords[tokenKey]
-                  });
-              });
-          });
-          if (allRecords.length === 0) return showAlert('No history records to export', 'warning');
-          const csvData = convertToCSV(allRecords);
-          downloadCSV(csvData, `kvas_full_history_${new Date().toISOString().split('T')[0]}.csv`);
-      } catch (err) {
-          showAlert('Export Error: ' + err.message, 'danger');
-      }
-  };
-
-  // 3. LCD Brightness Slider
-  DOM.lcdBrightnessSlider.oninput = (e) => {
-      DOM.brightnessValue.textContent = e.target.value; // Update the label
-  };
-  DOM.lcdBrightnessSlider.onchange = async (e) => {
-      const brightness = e.target.value;
-      try {
-          const lcdControlRef = ref(db, 'lcdControl/brightness');
-          await set(lcdControlRef, Number(brightness));
-          showAlert(`LCD Brightness command sent: ${brightness}%`);
-      } catch (err) {
-          showAlert('Brightness Error: ' + err.message, 'danger');
-      }
-  };
-
-  // 4. Dark Mode Toggle
-  DOM.darkModeToggle.onchange = () => {
-      if (DOM.darkModeToggle.checked) {
-          document.body.classList.add('dark-mode');
-          localStorage.setItem('darkMode', 'enabled');
-      } else {
-          document.body.classList.remove('dark-mode');
-          localStorage.setItem('darkMode', 'disabled');
-      }
-      
-      // --- UPDATE CHARTS FOR DARK MODE ---
-      updateGenderChart(currentPatientsData);
-      updateAgeChart(currentPatientsData);
-      updatePatientTrendChart(currentPatientsData, currentHistoryData);
-  };
-
-  // 5. Clear All History
-  DOM.clearHistoryBtn.onclick = async () => {
-      if (!confirm('!!! WARNING !!!\n\nAre you sure you want to delete ALL patient history? This action is permanent and cannot be undone.')) {
-          return;
-      }
-      if (!confirm('FINAL CONFIRMATION:\n\nThis will erase all records from the history tab. Proceed?')) {
-          return;
-      }
-      try {
-          await remove(historyRef); // Removes the entire 'history' node
-          showAlert('All patient history has been permanently deleted.', 'success');
-      } catch (err) {
-          showAlert('Delete Error: ' + err.message, 'danger');
-      }
-  };
-  /* --- END SETTINGS EVENT LISTENERS --- */
-
-  // UI interactions
-  const openModal = (modal) => modal.style.display = 'flex';
-  const closeModal = (modal) => { modal.style.display = 'none'; if (modal === DOM.addPatientModal) { DOM.nameInput.value=''; DOM.ageInput.value=''; DOM.genderInput.value='Male'; DOM.whatsappInput.value=''; DOM.addressInput.value=''; editingToken=null; DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient'; DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register'; } };
-  DOM.addPatientBtn.onclick = () => openModal(DOM.addPatientModal); DOM.closeAddPatient.onclick = () => closeModal(DOM.addPatientModal); DOM.addPatientModal.onclick = (e) => e.target === DOM.addPatientModal && closeModal(DOM.addPatientModal); document.onkeydown = (e) => e.key === 'Escape' && closeModal(DOM.addPatientModal);
-
-  DOM.toggleBtn.onclick = () => { DOM.sidebar.classList.toggle('collapsed'); DOM.main.classList.toggle('expanded'); };
-  DOM.mobileToggle.onclick = () => DOM.sidebar.classList.toggle('mobile-open');
-  DOM.menuItems.forEach(item => item.addEventListener('click', () => { DOM.menuItems.forEach(i => i.classList.remove('active')); item.classList.add('active'); DOM.pageTitle.textContent = item.querySelector('span').textContent; document.querySelectorAll('.section').forEach(s => s.classList.add('hidden')); document.getElementById(item.dataset.section)?.classList.remove('hidden'); DOM.sidebar.classList.remove('mobile-open'); }));
-
-  // initial state
+  // We'll wire DOM and event listeners after DOMContentLoaded so nothing is null
   document.addEventListener('DOMContentLoaded', () => {
-      // Check for saved dark mode preference
-      if (localStorage.getItem('darkMode') === 'enabled') {
-          document.body.classList.add('dark-mode');
-          DOM.darkModeToggle.checked = true;
-      }
-      
-      // Set active menu item based on hash or default
-      const activeSection = window.location.hash ? window.location.hash.substring(1) : 'dashboard';
-      const activeMenuItem = document.querySelector(`.menu-item[data-section="${activeSection}"]`) || document.querySelector(`.menu-item[data-section="dashboard"]`);
-      
-      activeMenuItem.click(); // Trigger click to set section
-      
-      // Original initial state logic
-      DOM.addPatientModal.style.display = 'none'; 
-      get(currentDisplayRef).then(snap => { if (snap.exists()) DOM.lcdPreview.textContent = snap.val().text || 'Waiting for input...'; }).catch(()=>{});
+    // DOM refs (assigned after elements exist)
+    const DOM = {
+      sidebar: document.getElementById('sidebar'), main: document.getElementById('main'), toggleBtn: document.getElementById('toggleBtn'),
+      mobileToggle: document.getElementById('mobileToggle'), menuItems: document.querySelectorAll('.menu-item'), pageTitle: document.getElementById('pageTitle'),
+      addPatientModal: document.getElementById('addPatientModal'), addPatientBtn: document.getElementById('addPatientBtn'), resetBtn: document.getElementById('resetBtn'),
+      emergencyBtn: document.getElementById('emergencyBtn'),
+      closeAddPatient: document.getElementById('closeAddPatient'), registerBtn: document.getElementById('registerBtn'),
+      nameInput: document.getElementById('name'), ageInput: document.getElementById('age'), genderInput: document.getElementById('gender'),
+      whatsappInput: document.getElementById('whatsapp'), addressInput: document.getElementById('address'),
+      patientsTable: document.getElementById('patientsTable'), totalPatients: document.getElementById('totalPatients'), todayPatients: document.getElementById('todayPatients'),
+      manualLCD: document.getElementById('manualLCD'), lcdPreview: document.getElementById('lcdPreview'), sendLCD: document.getElementById('sendLCD'),
+      notifBadge: document.getElementById('notifBadge'), modalTitle: document.getElementById('modalTitle'), connectEspBtn: document.getElementById('connectEspBtn'),
+      historyArea: document.getElementById('historyArea'),
+      lcdOnBtn: document.getElementById('lcdOnBtn'),
+      lcdOffBtn: document.getElementById('lcdOffBtn'),
+      exportPatientsBtn: document.getElementById('exportPatientsBtn'),
+      exportHistoryBtn: document.getElementById('exportHistoryBtn'),
+      lcdBrightnessSlider: document.getElementById('lcdBrightnessSlider'),
+      brightnessValue: document.getElementById('brightnessValue'),
+      darkModeToggle: document.getElementById('darkModeToggle'),
+      clearHistoryBtn: document.getElementById('clearHistoryBtn')
+    };
 
-      // Initial chart draw (will be updated by Firebase listeners)
-      updateGenderChart([]);
-      updateAgeChart([]);
-      updatePatientTrendChart([], {});
-  });
+    // Realtime refs
+    const patientsRef = ref(db, 'patients');
+    const historyRef = ref(db, 'history');
+    const currentDisplayRef = ref(db, 'currentDisplay');
+
+    // local state
+    let editingToken = null;
+
+    // Attach Firebase listeners
+    onValue(patientsRef, (snap) => {
+      try {
+        const snapshotVal = snap.exists() ? snap.val() : null;
+        currentPatientsData = patientsSnapshotToArray(snapshotVal);
+        // render UI
+        const patients = currentPatientsData.slice().sort((a,b) => (Number(a.token)||0) - (Number(b.token)||0));
+        if (!DOM.patientsTable) return;
+        if (patients.length === 0) {
+          DOM.patientsTable.innerHTML = `<tr><td colspan="8" align="center" style="padding:20px;">No active patients</td></tr>`;
+        } else {
+          DOM.patientsTable.innerHTML = patients.map(p => {
+            const safeName = (p.name||'').replace(/'/g,"\\'");
+            const addressShort = p.address ? (p.address.length>30 ? p.address.substring(0,30)+'...' : p.address) : 'N/A';
+            return `<tr>
+              <td>${p.token || 'N/A'}</td>
+              <td>${p.key || 'N/A'}</td>
+              <td>${p.name || 'N/A'}</td>
+              <td>${p.age || 'N/A'}</td>
+              <td>${p.gender || 'N/A'}</td>
+              <td>${p.whatsapp || 'N/A'}</td>
+              <td>${addressShort}</td>
+              <td>
+                <button class="btn btn-sm btn-primary" onclick="window.editPatient('${p.token}')">Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="window.deletePatient('${p.token}','${safeName}')">Del</button>
+                <button class="btn btn-sm btn-secondary" onclick="window.displayPatient('${p.token}')">Display</button>
+              </td>
+            </tr>`;
+          }).join('');
+        }
+        if (DOM.totalPatients) DOM.totalPatients.textContent = patients.length;
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (DOM.todayPatients) DOM.todayPatients.textContent = patients.filter(p => (p.createdAt || '').startsWith(todayStr)).length;
+
+        // update charts
+        updateGenderChart(currentPatientsData);
+        updateAgeChart(currentPatientsData);
+        updatePatientTrendChart(currentPatientsData, currentHistoryData);
+      } catch (err) { console.error('onValue(patientsRef) handler error', err); }
+    });
+
+    onValue(historyRef, (snap) => {
+      try {
+        const snapshotVal = snap.exists() ? snap.val() : null;
+        currentHistoryData = snapshotVal;
+        // render history
+        const container = DOM.historyArea;
+        if (!container) return;
+        container.innerHTML = '';
+        if (!snapshotVal) { container.innerHTML = '<p>No history records found.</p>'; return; }
+        const dates = Object.keys(snapshotVal).sort().reverse();
+        dates.forEach(date => {
+          const records = snapshotVal[date] || {};
+          const rows = Object.keys(records).map(k => {
+            const r = records[k] || {};
+            const safeName = (r.name||'').replace(/'/g,"\\'");
+            return `<tr>
+              <td>${r.token || k}</td>
+              <td>${r.id || 'N/A'}</td>
+              <td>${r.name || 'N/A'}</td>
+              <td>${r.age || 'N/A'}</td>
+              <td>${r.gender || 'N/A'}</td>
+              <td><button class="btn btn-sm btn-danger" onclick="window.deleteHistoryRecord('${date}','${k}','${safeName}')">Delete</button></td>
+            </tr>`;
+          }).join('');
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `<h4 class="card-title">Date: ${date}</h4>
+            <div class="table-container"><table class="table"><thead><tr><th>Token</th><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+          container.appendChild(card);
+        });
+
+        updatePatientTrendChart(currentPatientsData, currentHistoryData);
+      } catch (err) { console.error('onValue(historyRef) handler error', err); }
+    });
+
+    onValue(currentDisplayRef, (snap) => {
+      try {
+        const v = snap.exists() ? snap.val() : null;
+        const previewEl = document.getElementById('lcdPreview');
+        if (previewEl) previewEl.textContent = v?.text || 'Waiting for input...';
+      } catch (err) { console.error('onValue(currentDisplayRef) handler error', err); }
+    });
+
+    // Expose functions for inline onclick handlers
+    window.editPatient = async (token) => {
+      try {
+        const snap = await get(child(ref(db), `patients/${token}`));
+        if (!snap.exists()) { showAlert('Patient not found', 'warning'); return; }
+        const data = snap.val();
+        editingToken = token;
+        if (DOM.nameInput) DOM.nameInput.value = data.name || '';
+        if (DOM.ageInput) DOM.ageInput.value = data.age || '';
+        if (DOM.genderInput) DOM.genderInput.value = data.gender || 'Male';
+        if (DOM.whatsappInput) DOM.whatsappInput.value = data.whatsapp || '';
+        if (DOM.addressInput) DOM.addressInput.value = data.address || '';
+        if (DOM.modalTitle) DOM.modalTitle.innerHTML = '<i class="fas fa-edit"></i> Edit Patient';
+        if (DOM.registerBtn) DOM.registerBtn.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+        if (DOM.addPatientModal) DOM.addPatientModal.style.display = 'flex';
+      } catch (err) { console.error('editPatient error', err); showAlert('Error loading patient', 'danger'); }
+    };
+
+    window.deletePatient = async (token, name) => {
+      if (!confirm(`Delete patient ${name}?`)) return;
+      try {
+        await remove(ref(db, `patients/${token}`));
+        showAlert('Patient deleted', 'success');
+      } catch (err) { console.error('deletePatient error', err); showAlert('Delete error: ' + err.message, 'danger'); }
+    };
+
+    window.displayPatient = async (token) => {
+      try {
+        const snap = await get(child(ref(db), `patients/${token}`));
+        if (!snap.exists()) { showAlert('Patient not found', 'warning'); return; }
+        const p = snap.val();
+        const displayText = `Token: ${p.token || token}  Name: ${p.name || 'N/A'}`;
+        await set(currentDisplayRef, { text: displayText, token: p.token || token, ts: Date.now() });
+        notifyDisplayPatient(p.name || 'Unknown', p.token || token);
+        showAlert('Displayed on LCD', 'success');
+      } catch (err) { console.error('displayPatient error', err); showAlert('LCD error: ' + err.message, 'danger'); }
+    };
+
+    window.deleteHistoryRecord = async (date, tokenKey, name) => {
+      if (!confirm(`Delete ${name} from history (${date})?`)) return;
+      try {
+        await remove(ref(db, `history/${date}/${tokenKey}`));
+        showAlert('History record deleted.', 'success');
+      } catch (err) { console.error('deleteHistoryRecord error', err); showAlert('Delete error: ' + err.message, 'danger'); }
+    };
+
+    // Register / update patient
+    if (DOM.registerBtn) {
+      DOM.registerBtn.onclick = async () => {
+        const name = (DOM.nameInput?.value || '').trim();
+        const age = (DOM.ageInput?.value || '').trim();
+        if (!name || !age) return showAlert('Please fill Name and Age.', 'warning');
+        DOM.registerBtn.disabled = true; DOM.registerBtn.innerHTML = '<span class="loading"></span>';
+        try {
+          if (editingToken) {
+            const updated = { name, age: Number(age), gender: DOM.genderInput.value, whatsapp: (DOM.whatsappInput?.value || '').trim(), address: (DOM.addressInput?.value || '').trim() };
+            await update(ref(db, `patients/${editingToken}`), updated);
+            showAlert('Patient updated successfully!', 'success');
+          } else {
+            const snap = await get(patientsRef); const all = snap.exists() ? snap.val() : null; let maxToken = 0;
+            if (all) { Object.keys(all).forEach(k => { const t = Number(all[k]?.token ?? k); if (!isNaN(t) && t > maxToken) maxToken = t; }); }
+            const nextToken = maxToken + 1; const tokenKey = nextToken.toString();
+            const newPatient = { id: generateUniquePatientId(), token: nextToken, name, age: Number(age), gender: DOM.genderInput.value, whatsapp: (DOM.whatsappInput?.value || '').trim(), address: (DOM.addressInput?.value || '').trim(), createdAt: new Date().toISOString(), dateTime: new Date().toLocaleString("en-IN") };
+            await set(ref(db, `patients/${tokenKey}`), newPatient);
+            notifyNewRegistration(newPatient.name, newPatient.token);
+            const today = new Date().toISOString().split('T')[0]; localStorage.setItem('tokenData', JSON.stringify({ token: nextToken, date: today }));
+            showAlert('Patient registered successfully!', 'success');
+          }
+        } catch (err) { console.error('registerBtn error', err); showAlert('Error: ' + (err.message || err), 'danger'); }
+        finally {
+          editingToken = null;
+          if (DOM.addPatientModal) DOM.addPatientModal.style.display = 'none';
+          if (DOM.registerBtn) { DOM.registerBtn.disabled = false; DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register'; }
+          if (DOM.modalTitle) DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient';
+          if (DOM.nameInput) DOM.nameInput.value=''; if (DOM.ageInput) DOM.ageInput.value=''; if (DOM.genderInput) DOM.genderInput.value='Male';
+          if (DOM.whatsappInput) DOM.whatsappInput.value=''; if (DOM.addressInput) DOM.addressInput.value='';
+        }
+      };
+    }
+
+    // Reset
+    if (DOM.resetBtn) {
+      DOM.resetBtn.onclick = async () => {
+        const snap = await get(patientsRef);
+        if (!snap.exists()) return showAlert('No patients to reset', 'warning');
+        if (!confirm('Move all current patients to history and reset token? This cannot be undone.')) return;
+        try {
+          const patientsObj = snap.val(); const today = new Date().toISOString().split('T')[0]; const updates = {};
+          Object.keys(patientsObj).forEach(tokenKey => { const record = patientsObj[tokenKey]; updates[`history/${today}/${tokenKey}`] = { ...record, movedAt: new Date().toISOString() }; updates[`patients/${tokenKey}`] = null; });
+          await update(ref(db), updates);
+          localStorage.setItem('tokenData', JSON.stringify({ token: 0, date: today }));
+          showAlert('All patients moved to history and token reset.', 'success');
+        } catch (err) { console.error('resetBtn error', err); showAlert('Reset error: ' + err.message, 'danger'); }
+      };
+    }
+
+    // LCD controls
+    if (DOM.sendLCD) DOM.sendLCD.onclick = async () => {
+      const text = (DOM.manualLCD?.value || '').trim(); if (!text) return showAlert('Please enter text for the LCD', 'warning');
+      try { await set(currentDisplayRef, { text, ts: Date.now() }); showAlert('Sent to LCD', 'success'); } catch (err) { console.error('sendLCD error', err); showAlert('LCD update error: ' + err.message, 'danger'); }
+    };
+    if (DOM.lcdOnBtn) DOM.lcdOnBtn.onclick = async () => { try { await set(currentDisplayRef, { text: "Turning On... Welcome to Kvas Hospital", ts: Date.now() }); speakText('LCD is turning on.'); showAlert('LCD turned on with welcome message.', 'success'); } catch (err) { console.error('lcdOn error', err); showAlert('LCD On Error: ' + err.message, 'danger'); } };
+    if (DOM.lcdOffBtn) DOM.lcdOffBtn.onclick = async () => { try { await set(currentDisplayRef, { text: "Turning Off...", ts: Date.now() }); speakText('LCD is turning off.'); showAlert('LCD turned off.', 'success'); } catch (err) { console.error('lcdOff error', err); showAlert('LCD Off Error: ' + err.message, 'danger'); } };
+    if (DOM.connectEspBtn) DOM.connectEspBtn.onclick = () => { showAlert('ESP32 connection simulated. Use Firebase listener on device to fetch currentDisplay.'); };
+
+    // Emergency
+    if (DOM.emergencyBtn) DOM.emergencyBtn.onclick = async () => {
+      try { await set(currentDisplayRef, { text: "!!! EMERGENCY !!!", token: 'EMERGENCY', ts: Date.now() }); const previewEl = document.getElementById('lcdPreview'); if (previewEl) previewEl.textContent = "!!! EMERGENCY !!!"; speakText("Emergency mode activated. Displaying emergency alert."); showAlert('Emergency alert sent to LCD!', 'danger'); } catch (err) { console.error('emergencyBtn error', err); showAlert('Emergency LCD error: ' + err.message, 'danger'); }
+    };
+
+    // Export
+    if (DOM.exportPatientsBtn) DOM.exportPatientsBtn.onclick = async () => {
+      try {
+        const snap = await get(patientsRef);
+        if (!snap.exists()) return showAlert('No active patients to export', 'warning');
+        const patients = patientsSnapshotToArray(snap.val());
+        if (patients.length === 0) return showAlert('No active patients to export', 'warning');
+        const csvData = convertToCSV(patients);
+        downloadCSV(csvData, `kvas_active_patients_${new Date().toISOString().split('T')[0]}.csv`);
+      } catch (err) { console.error('exportPatientsBtn error', err); showAlert('Export Error: ' + err.message, 'danger'); }
+    };
+
+    if (DOM.exportHistoryBtn) DOM.exportHistoryBtn.onclick = async () => {
+      try {
+        const snap = await get(historyRef);
+        if (!snap.exists()) return showAlert('No history records to export', 'warning');
+        const historyData = snap.val(); const allRecords = [];
+        Object.keys(historyData).forEach(date => {
+          const dateRecords = historyData[date];
+          Object.keys(dateRecords).forEach(tokenKey => {
+            allRecords.push({ archived_date: date, ...dateRecords[tokenKey] });
+          });
+        });
+        if (allRecords.length === 0) return showAlert('No history records to export', 'warning');
+        const csvData = convertToCSV(allRecords);
+        downloadCSV(csvData, `kvas_full_history_${new Date().toISOString().split('T')[0]}.csv`);
+      } catch (err) { console.error('exportHistoryBtn error', err); showAlert('Export Error: ' + err.message, 'danger'); }
+    };
+
+    // Brightness slider
+    if (DOM.lcdBrightnessSlider) {
+      DOM.lcdBrightnessSlider.oninput = (e) => { if (DOM.brightnessValue) DOM.brightnessValue.textContent = e.target.value; };
+      DOM.lcdBrightnessSlider.onchange = async (e) => {
+        const brightness = e.target.value;
+        try { await set(ref(db, 'lcdControl/brightness'), Number(brightness)); showAlert(`LCD Brightness command sent: ${brightness}%`, 'success'); } catch (err) { console.error('lcdBrightness error', err); showAlert('Brightness Error: ' + err.message, 'danger'); }
+      };
+    }
+
+    // Dark mode toggle
+    if (DOM.darkModeToggle) DOM.darkModeToggle.onchange = () => {
+      if (DOM.darkModeToggle.checked) { document.body.classList.add('dark-mode'); localStorage.setItem('darkMode', 'enabled'); } else { document.body.classList.remove('dark-mode'); localStorage.setItem('darkMode', 'disabled'); }
+      updateGenderChart(currentPatientsData); updateAgeChart(currentPatientsData); updatePatientTrendChart(currentPatientsData, currentHistoryData);
+    };
+
+    // Clear history
+    if (DOM.clearHistoryBtn) DOM.clearHistoryBtn.onclick = async () => {
+      if (!confirm('!!! WARNING !!!\n\nAre you sure you want to delete ALL patient history? This action is permanent and cannot be undone.')) return;
+      if (!confirm('FINAL CONFIRMATION:\n\nThis will erase all records from the history tab. Proceed?')) return;
+      try { await remove(historyRef); showAlert('All patient history has been permanently deleted.', 'success'); } catch (err) { console.error('clearHistoryBtn error', err); showAlert('Delete Error: ' + err.message, 'danger'); }
+    };
+
+    // UI interactions
+    const openModal = (modal) => modal && (modal.style.display = 'flex');
+    const closeModal = (modal) => {
+      if (!modal) return;
+      modal.style.display = 'none';
+      if (modal === DOM.addPatientModal) {
+        if (DOM.nameInput) DOM.nameInput.value=''; if (DOM.ageInput) DOM.ageInput.value=''; if (DOM.genderInput) DOM.genderInput.value='Male';
+        if (DOM.whatsappInput) DOM.whatsappInput.value=''; if (DOM.addressInput) DOM.addressInput.value=''; editingToken=null;
+        if (DOM.modalTitle) DOM.modalTitle.innerHTML = '<i class="fas fa-user-plus"></i> Register Patient';
+        if (DOM.registerBtn) DOM.registerBtn.innerHTML = '<i class="fas fa-plus"></i> Register';
+      }
+    };
+    if (DOM.addPatientBtn) DOM.addPatientBtn.onclick = () => openModal(DOM.addPatientModal);
+    if (DOM.closeAddPatient) DOM.closeAddPatient.onclick = () => closeModal(DOM.addPatientModal);
+    if (DOM.addPatientModal) DOM.addPatientModal.onclick = (e) => e.target === DOM.addPatientModal && closeModal(DOM.addPatientModal);
+    document.onkeydown = (e) => e.key === 'Escape' && closeModal(DOM.addPatientModal);
+
+    if (DOM.toggleBtn) DOM.toggleBtn.onclick = () => { DOM.sidebar.classList.toggle('collapsed'); DOM.main.classList.toggle('expanded'); };
+    if (DOM.mobileToggle) DOM.mobileToggle.onclick = () => DOM.sidebar.classList.toggle('mobile-open');
+    DOM.menuItems.forEach(item => item.addEventListener('click', () => {
+      DOM.menuItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      if (DOM.pageTitle) DOM.pageTitle.textContent = item.querySelector('span')?.textContent || '';
+      document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+      const sectionId = item.dataset.section;
+      if (sectionId) document.getElementById(sectionId)?.classList.remove('hidden');
+      DOM.sidebar.classList.remove('mobile-open');
+      history.replaceState(null, '', `#${sectionId}`);
+    }));
+
+    // initial UI state
+    if (localStorage.getItem('darkMode') === 'enabled') { document.body.classList.add('dark-mode'); if (DOM.darkModeToggle) DOM.darkModeToggle.checked = true; }
+    const activeSection = window.location.hash ? window.location.hash.substring(1) : 'dashboard';
+    const activeMenuItem = document.querySelector(`.menu-item[data-section="${activeSection}"]`) || document.querySelector(`.menu-item[data-section="dashboard"]`);
+    if (activeMenuItem) activeMenuItem.click();
+    if (DOM.addPatientModal) DOM.addPatientModal.style.display = 'none';
+    // set initial LCD preview (safe)
+    get(currentDisplayRef).then(snap => { if (snap.exists()) { const v = snap.val(); const previewEl = document.getElementById('lcdPreview'); if (previewEl) previewEl.textContent = v.text || 'Waiting for input...'; } }).catch(e => console.error('get currentDisplayRef failed', e));
+    // initial charts
+    updateGenderChart([]);
+    updateAgeChart([]);
+    updatePatientTrendChart([], {});
+  }); // end DOMContentLoaded
 
 </script>
 </body>
